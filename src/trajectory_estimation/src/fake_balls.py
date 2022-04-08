@@ -14,7 +14,7 @@ class FakeBallsNode():
     # Initial velocities
     self._vx = 1
     self._vy = 1
-    self._vz = 10
+    self._vz = 5
     # Gravity
     self._g = -9.81
     # Final time
@@ -52,7 +52,7 @@ class FakeBallsNode():
       xs_nominal.append(x)
       y = self._vy*t + self._yi
       ys_nominal.append(y)
-      z = self._g*t*t + self._vz*t + self._zi
+      z = 0.5*self._g*t*t + self._vz*t + self._zi
       zs_nominal.append(z)
       # Add Gaussian noise
       noise = np.random.normal(scale=[self._sigma_x, self._sigma_y, self._sigma_z])
