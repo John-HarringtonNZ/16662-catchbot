@@ -41,13 +41,19 @@ class FakeBallsNode():
     # Plotting arrays
     ts = []
     xs = []
+    xs_nominal = []
     ys = []
+    ys_nominal = []
     zs = []
+    zs_nominal = []
     while t <= self._tf:
       # Compute nominal values
       x = self._vx*t + self._xi
+      xs_nominal.append(x)
       y = self._vy*t + self._yi
+      ys_nominal.append(y)
       z = self._g*t*t + self._vz*t + self._zi
+      zs_nominal.append(z)
       # Add Gaussian noise
       noise = np.random.normal(scale=[self._sigma_x, self._sigma_y, self._sigma_z])
       x += noise[0]
@@ -65,10 +71,13 @@ class FakeBallsNode():
 
     # plt.figure()
     # plt.plot(ts,xs)
+    # plt.plot(ts,xs_nominal)
     # plt.figure()
     # plt.plot(ts,ys)
+    # plt.plot(ts,ys_nominal)
     # plt.figure()
     # plt.plot(ts,zs)
+    # plt.plot(ts,zs_nominal)
     # plt.show()
 
   def main_loop(self):
