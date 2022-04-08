@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.9
 
 import rospy
 from geometry_msgs.msg import Point, PointStamped
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np
 
 class FakeBallsNode():
@@ -22,9 +22,9 @@ class FakeBallsNode():
     # Time delta
     self._dt = 0.1
     # Standard deviations for Gaussian noise
-    self._sigma_x = 0.1
-    self._sigma_y = 0.1
-    self._sigma_z = 0.1
+    self._sigma_x = 0.05
+    self._sigma_y = 0.05
+    self._sigma_z = 0.05
 
     self._rate = rospy.Rate(1/self._dt)
     self._points_pub = rospy.Publisher('/ball_detections', PointStamped, queue_size=1)

@@ -28,7 +28,6 @@ class TrajectoryEstimator:
       self.pub_threshold = 0.02 # Only update publisher if new intersect is different enough
 
       self.intersect_pos_msg = PointStamped()
-      self.seq = 0
 
       self.sub = rospy.Subscriber(
         "/ball_detections", 
@@ -40,38 +39,37 @@ class TrajectoryEstimator:
         queue_size=2)
 
   def update_traj_estimate(self, msg):
-    """
-    Test
-    """
 
     # If not initialized, start
-    if self.detections.size == (0):
+    if self.detections.size == 0:
 
       self.detections = np.array([[msg.point.x, msg.point.y, msg.point.z - self.reference_z]])
-      self.reference_time = msg.header.time.to_sec()
+      self.reference_time = msg.header.stamp.to_sec()
 
     else: 
       
-      self.detections.append(
-        [
-          [
+      self.detections = np.append(
+        self.detections,
+          [[
             msg.point.x,
             msg.point.y,
-            msg.point.z - self.reference_z]])
+            msg.point.z - self.reference_z]], axis=0)
     
-    self.times.append(np.array(msg.header.time.to_sec() - self.reference_time))
+    self.times = np.append(
+      self.times,
+      np.array(msg.header.stamp.to_sec() - self.reference_time))
 
     # Don't compute if not enough points
-    if self.detections.size[0] < 4:
+    if self.detections.shape[0] < 4:
       return
 
     # Fit x and y linearly, and z parabolicly
     x_fit = np.polynomial.polynomial.polyfit(
       self.times, self.detections[:,0], 1)
     y_fit = np.polynomial.polynomial.polyfit(
-      self.times, self.detections[:,0], 1)
+      self.times, self.detections[:,1], 1)
     z_fit = np.polynomial.polynomial.polyfit(
-      self.times, self.detections[:,0], 2)
+      self.times, self.detections[:,2], 2)
 
     # Get intersection point for reference
     z_roots = np.polynomial.polynomial.polyroots(z_fit)
@@ -93,14 +91,10 @@ class TrajectoryEstimator:
         return
 
     # Set up message
-    self.intersect_pos_msg.header.stamp = rospy.Time.now()
-    self.intersect_pos_msg.header.seq = self.seq
-    self.seq += 1
-    self.intersect_pos_msg.header.frame_id = "base_link" #Update to frankas bas link
-
+    self.intersect_pos_msg.header = msg.header
     self.intersect_pos_msg.point.x = x_intersect
     self.intersect_pos_msg.point.y = y_intersect
-    self.intersect_pos_msg.point.y = y_intersect
+    self.intersect_pos_msg.point.z = self.reference_z
 
     self.pub.publish(self.intersect_pos_msg)
 
