@@ -50,3 +50,12 @@ qtcreator-*
 
 # Catkin custom files
 CATKIN_IGNORE
+
+# Logs
+bags/
+
+# ROS files
+.catkin_workspace
+
+# MAC OS temp files
+.DS_Store
