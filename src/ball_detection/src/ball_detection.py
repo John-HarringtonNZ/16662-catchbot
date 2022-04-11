@@ -67,7 +67,6 @@ class BallDetector:
         grey_Upper = (40)
 
         delta_t = self.rgb_header.stamp.to_sec() - self.depth_header.stamp.to_sec()
-        #print(delta_t)
 
         # if we want to threshold out smaller contours
         rad_thresh = 0
@@ -114,13 +113,14 @@ class BallDetector:
         # thresh = max(25, int(2.5 * radius))
         thresh = 50
         object_center = Point(np.array([center_x, center_y]), 'azure_kinect_overhead')
-        object_depth = depth_image[max(center_y-thresh, 0): center_y+thresh, max(0, center_x-thresh): center_x+thresh, 0] / 1000
+        # object_depth = depth_image[max(center_y-thresh, 0): center_y+thresh, max(0, center_x-thresh): center_x+thresh, 0] / 1000
 
-        if object_depth[object_depth != 0].size != 0:
-            object_depth2 = np.min(np.where(object_depth==0, 1e6, object_depth)) / 1000
-            print(object_depth2)
-        else:
-            object_depth2 = depth_image[center_y, center_x, 0] / 1000
+        # if object_depth[object_depth != 0].size != 0:
+        #     object_depth2 = np.min(np.where(object_depth==0, 1e6, object_depth)) / 1000
+        #     print(object_depth2)
+        # else:
+        #     object_depth2 = depth_image[center_y, center_x, 0] / 1000
+        object_depth2 = depth_image[center_y, center_x, 0] / 1000
         object_center_point_in_world = self.extrinsics * self.intrinsics.deproject_pixel(object_depth2, object_center)    
 
         return object_center_point_in_world
