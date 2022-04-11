@@ -13,6 +13,13 @@ from frankapy.proto import PosePositionSensorMessage, ShouldTerminateSensorMessa
 from franka_interface_msgs.msg import SensorDataGroup
 from frankapy.utils import min_jerk_weight
 
+# A good pose from where robot can start moving from
+START_POSE = RigidTransform(
+        translation=np.array([0.4, 0, 0.4]),
+        rotation=np.array([[1.0, 0, 0], [0, -1.0, 0], [0, 0, -1.0]]),
+        from_frame="franka_tool",
+        to_frame="world",
+    )
 
 def moveToCatch(fa, goal_pose, velocity=0.25, dt=0.02):
     start = time.time()
@@ -21,6 +28,8 @@ def moveToCatch(fa, goal_pose, velocity=0.25, dt=0.02):
     T = float(delta_trans / velocity)
     ts = np.arange(0, T, dt)
 
+    # weights and pose_traj calculations take few 100ms each
+    # Time taken is proportional to dt (or) length of the discretized trajectory
     weights = [min_jerk_weight(t, T) for t in ts]
     pose_traj = [curr_pose.interpolate_with(goal_pose, w) for w in weights]
 
@@ -32,7 +41,8 @@ def moveToCatch(fa, goal_pose, velocity=0.25, dt=0.02):
 
     rospy.loginfo(f"Trajectory time: {T:0.4f}s.\tPublishing pose trajectory...")
     # To ensure skill doesn't end before completing trajectory, make the buffer time much longer than needed
-    fa.goto_pose(pose_traj[1], duration=dt, dynamic=True, buffer_time=5 + 2 * T)
+
+    fa.goto_pose(pose_traj[1], duration=dt, dynamic=True, buffer_time=5 + 2 * T, block=False)
     init_time = rospy.Time.now().to_time()
     for i in range(2, len(ts)):
         timestamp = rospy.Time.now().to_time() - init_time
@@ -63,6 +73,9 @@ def moveToCatch(fa, goal_pose, velocity=0.25, dt=0.02):
         )
     )
     pub.publish(ros_msg)
+    fa.wait_for_skill()
+    # while(np.linalg.norm(fa.get_joint_velocities()) > 1e-2):
+    #     pass
     rospy.loginfo(f"Movement Done. Runtime: {time.time() - start:0.4f}s")
 
 
@@ -70,26 +83,20 @@ if __name__ == "__main__":
 
     # initialize arm
     fa = FrankaArm()
-    fa.reset_joints()
+    # Commands Arm to go to default hardcoded home joint configuration
+    # fa.reset_joints()
 
     # Go to start position
+    fa.goto_pose(START_POSE, duration=5)
+
+    # Create a displacement w.r.to the tool and create a goal pose
     curr_pose = fa.get_pose()
-    home_pose = curr_pose.copy()
     T_delta = RigidTransform(
-        translation=np.array([0.1, 0, 0.1]),  # change this to be good start position
+        translation=np.array([0.00, 0.2, 0]),
         rotation=RigidTransform.z_axis_rotation(np.deg2rad(0)),
         from_frame=curr_pose.from_frame,
         to_frame=curr_pose.from_frame,
     )
-    home_pose = curr_pose * T_delta
-    fa.goto_pose(home_pose, duration=5)
+    goal_pose = curr_pose * T_delta
 
-    T_delta_2 = RigidTransform(
-        translation=np.array([0.00, 0.4, 0]),  # change this to be good start position
-        rotation=RigidTransform.z_axis_rotation(np.deg2rad(0)),
-        from_frame=home_pose.from_frame,
-        to_frame=home_pose.from_frame,
-    )
-    goal_pose = home_pose * T_delta_2
-
-    moveToCatch(fa, goal_pose, velocity=0.75, dt=0.01)
+    moveToCatch(fa, goal_pose, velocity=0.2, dt=0.01)
