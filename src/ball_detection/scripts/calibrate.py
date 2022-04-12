@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 Adapted from autolab/perception package's register camera script:
 Script to register sensors to a chessboard for the YuMi setup
@@ -9,7 +7,6 @@ import argparse
 import cv2
 import numpy as np
 import os
-import pathlib
 import sys
 import time
 import traceback
@@ -20,27 +17,41 @@ from perception import CameraChessboardRegistration, RgbdSensorFactory, CameraIn
 
 from frankapy import FrankaArm
 
+CALIBRATE_POSE = RigidTransform(
+        translation=np.array([0.6, 0.2, 0.4]),
+        rotation=np.array([[-1.0, 0, 0], [0, 1.0, 0], [0, 0, -1.0]]),
+        from_frame="franka_tool",
+        to_frame="world",
+    )
+
 if __name__ == '__main__': 
 
-    filepath = pathlib.Path(__file__).parent.parent.resolve()
-    config_file_dir = os.path.join(filepath, 'config/register_azure_kinect_with_franka.yaml')
-    config = YamlConfig(config_file_dir)
-    intrinsics_dir = os.path.join(filepath, 'config/azure_kinect.intr')
+     # parse args
+    parser = argparse.ArgumentParser(description='Register a camera to a robot')
+    parser.add_argument('--config_filename', type=str, default='config/register_azure_kinect_with_franka.yaml', help='filename of a YAML configuration for registration')
+    parser.add_argument('--intrinsics_dir', type=str, default='config/azure_kinect.intr')
+    args = parser.parse_args()
+    config_filename = args.config_filename
+    config = YamlConfig(config_filename)
 
     robot = FrankaArm()
+    robot.reset_joints()
+
+    # Go to start position
+    robot.goto_pose(CALIBRATE_POSE, duration=5)
     
-    print('Applying 0 force torque control for {}s'.format(20))
-    robot.run_guide_mode(20)
+    # print('Applying 0 force torque control for {}s'.format(20))
+    # robot.run_guide_mode(20)
 
     T_ee_world = robot.get_pose()
 
     # Get T_cb_world by using T_ee_world*T_cb_ee
-    # T_cb_ee = RigidTransform(rotation=np.array([[0, 0, 1],[1, 0, 0],[0, 1, 0]]),
-    #                          translation=np.array([0.02275, 0, -0.0732]), 
-    #                          from_frame='cb', to_frame='franka_tool')
-    T_cb_ee = RigidTransform(rotation=np.array([[0, 0, 1],[-1, 0, 0],[0, -1, 0]]),
+    T_cb_ee = RigidTransform(rotation=np.array([[0, 0, 1],[1, 0, 0],[0, 1, 0]]),
                              translation=np.array([0.02275, 0, -0.0732]), 
                              from_frame='cb', to_frame='franka_tool')
+    # T_cb_ee = RigidTransform(rotation=np.array([[0, 0, 1],[-1, 0, 0],[0, -1, 0]]),
+    #                          translation=np.array([0.02275, 0, -0.0732]), 
+    #                          from_frame='cb', to_frame='franka_tool')
     # T_cb_ee = RigidTransform(rotation=np.array([[1, 0, 0],[0, 1, 0],[0, 0, 1]]),
     #                          translation=np.array([0.02275, 0, -0.0732]), 
     #                          from_frame='cb', to_frame='franka_tool')
@@ -65,8 +76,10 @@ if __name__ == '__main__':
             sensor = RgbdSensorFactory.sensor(sensor_type, sensor_config)
             rospy.loginfo('Starting sensor')
             sensor.start()
-            print(intrinsics_dir)
-            ir_intrinsics = CameraIntrinsics.load(intrinsics_dir)
+            if args.intrinsics_dir:
+                ir_intrinsics = CameraIntrinsics.load(args.intrinsics_dir)
+            else:
+                ir_intrinsics = sensor.ir_intrinsics
             rospy.loginfo('Sensor initialized')
 
             # register
@@ -97,6 +110,9 @@ if __name__ == '__main__':
         rospy.loginfo('Saving to {}'.format(output_dir))
         pose_filename = os.path.join(output_dir, '%s_to_world.tf' %(sensor_frame))
         T_camera_world.save(pose_filename)
+        if not args.intrinsics_dir:
+            intr_filename = os.path.join(output_dir, '%s.intr' %(sensor_frame))
+            ir_intrinsics.save(intr_filename)
         f = os.path.join(output_dir, 'corners_cb_%s.npy' %(sensor_frame))
         np.save(f, reg_result.cb_points_cam.data)
                 

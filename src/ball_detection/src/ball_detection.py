@@ -20,7 +20,7 @@ class BallDetector:
         self.ball_pos_msg = PointStamped()
         filepath = pathlib.Path(__file__).parent.resolve()
         self.intrinsics = CameraIntrinsics.load(os.path.join(filepath, '../config/azure_kinect.intr'))
-        self.extrinsics = RigidTransform.load(os.path.join(filepath, '../config/azure_kinect_overhead/azure_kinect_overhead_to_world.tf'))
+        self.extrinsics = RigidTransform.load(os.path.join(filepath, '../config/extrinsics.tf'))
         self.rgb_map = None
         self.depth_map = None
 
