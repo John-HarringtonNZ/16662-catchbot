@@ -46,11 +46,16 @@ class BallDetector:
             Image
         ) 
 
-        self.ts = message_filters.ApproximateTimeSynchronizer([self.rgb_sub, self.depth_sub],10,0.01)
+        self.ts = message_filters.ApproximateTimeSynchronizer([self.rgb_sub, self.depth_sub],1,0.01)
         self.ts.registerCallback(self.detectBall)
 
         self.pub = rospy.Publisher(
             "/ball_detections", 
+            PointStamped,
+            queue_size=2)
+        
+        self.image_pt_pub = rospy.Publisher(
+            "/image_ball_detections", 
             PointStamped,
             queue_size=2)
 
@@ -68,7 +73,6 @@ class BallDetector:
         # Process Depth msg
         self.depth_map = np.frombuffer(depth_msg.data, dtype=np.uint16).reshape(depth_msg.height, depth_msg.width, 1)
         self.depth_header = depth_msg.header
-        print(self.depth_map.shape)
         
         if self.rgb_map is None or self.depth_map is None:
             print('No images')
@@ -106,11 +110,6 @@ class BallDetector:
             # compute the minimum enclosing circle and centroid
             ((x, y), radius) = cv2.minEnclosingCircle(c)
 
-            min_radius = 6
-            if radius < min_radius:
-                # print(f"Ball too small: min_radius={min_radius}, detected radius={radius}")
-                return
-
             self.marked_image = cv2.circle(blurred, (int(x),int(y)), int(radius), (255, 0, 0), 2)
             self.marked_depth_map = cv2.circle(self.depth_map, (int(x),int(y)), int(radius), (255,), 2)
             # print(f"Ball detected at {round(x,2)}. {round(y,2)}, r={round(radius, 2)}")
@@ -119,41 +118,62 @@ class BallDetector:
                 self.image_pub.publish(self.bridge.cv2_to_imgmsg(self.marked_depth_map, "mono16"))
             except CvBridgeError as e:
                 print(e)
-            # cv2.imshow('Track', self.marked_image)
-            # k = cv2.waitKey(1) & 0xFF
-            # if k == ord('q'):
-            #     return -1
+            
+            min_radius = 6
+            if radius < min_radius:
+                print("Ball too small: min_radius={}, detected radius={}".format(min_radius, radius))
+                return
+            if self.depth_map[int(y), int(x), 0] < 100:
+                print("Depth too small")
+                return
             # only proceed if the radius meets a minimum size
             # if radius > rad_thresh: # tuning param
-            # ball_center = self.get_point_in_world(int(x), int(y), self.depth_map, radius)
-
-            # # Set up message
-            # self.ball_pos_msg.header = self.rgb_header
-            # self.ball_pos_msg.point.x = ball_center[0]
-            # self.ball_pos_msg.point.y = ball_center[1]
-            # self.ball_pos_msg.point.z = ball_center[2]
-            # self.pub.publish(self.ball_pos_msg)
+            ball_center = self.get_point_in_world(x, y, self.depth_map, radius)
+            print(ball_center)
+            # Set up message
+            self.ball_pos_msg.header = self.rgb_header
+            # TODO change frame ID to world/base_link frame
+            self.ball_pos_msg.point.x = ball_center[0]
+            self.ball_pos_msg.point.y = ball_center[1]
+            self.ball_pos_msg.point.z = ball_center[2]
+            self.pub.publish(self.ball_pos_msg)
 
             return 0
         else:
             print("No Ball detected!")
 
-    # def get_point_in_world(self, center_x, center_y, depth_image, radius): 
-    #     # thresh = max(25, int(2.5 * radius))
-    #     thresh = 50
-    #     object_center = Point(np.array([center_x, center_y]), 'azure_kinect_overhead')
-    #     # object_depth = depth_image[max(center_y-thresh, 0): center_y+thresh, max(0, center_x-thresh): center_x+thresh, 0] / 1000
+    def get_point_in_world(self, center_x, center_y, depth_image, radius): 
+        # thresh = max(25, int(2.5 * radius))
+        thresh = 50
+        # object_center = Point(np.array([center_x, center_y]), 'azure_kinect_overhead')
+        # object_depth = depth_image[max(center_y-thresh, 0): center_y+thresh, max(0, center_x-thresh): center_x+thresh, 0] / 1000
 
-    #     # if object_depth[object_depth != 0].size != 0:
-    #     #     object_depth2 = np.min(np.where(object_depth==0, 1e6, object_depth)) / 1000
-    #     #     print(object_depth2)
-    #     # else:
-    #     #     object_depth2 = depth_image[center_y, center_x, 0] / 1000
-    #     object_depth2 = depth_image[center_y, center_x, 0] / 1000
-    #     object_center_point_in_world = self.intrinsics.deproject_pixel(object_depth2, object_center)    
-    #     # self.extrinsics * 
-
-    #     return object_center_point_in_world
+        # if object_depth[object_depth != 0].size != 0:
+        #     object_depth2 = np.min(np.where(object_depth==0, 1e6, object_depth)) / 1000
+        #     print(object_depth2)
+        # else:
+        #     object_depth2 = depth_image[center_y, center_x, 0] / 1000
+        image_pt = np.array([[center_x, center_y, 1]]).T
+        image_ball_pos_msg = PointStamped()
+        image_ball_pos_msg.header = self.rgb_header
+        image_ball_pos_msg.point.x = center_x/100
+        image_ball_pos_msg.point.y = center_y/100
+        image_ball_pos_msg.point.z = 0
+        # print(self.intrinsics)
+        self.image_pt_pub.publish(image_ball_pos_msg)
+        kernel_size = 5
+        object_depth = np.median(depth_image[
+            max(0,int(center_y)-kernel_size//2):(int(center_y)+kernel_size//2),
+            max(0,int(center_x)-kernel_size//2):(int(center_x)+kernel_size//2), 0
+        ]) / 1000
+        # object_depth = 1
+        # print(depth_image[int(center_y), int(center_x), 0])
+        # print(np.r_[np.array([center_x, center_y]), 1.0])
+        camera_frame_pt = np.linalg.inv(self.intrinsics).dot(np.r_[np.array([center_x, center_y]), 1.0]) * object_depth
+        # object_center_point_in_world = self.intrinsics.deproject_pixel(object_depth2, object_center)    
+        # self.extrinsics * 
+        # TODO incorporate extrinsics
+        return camera_frame_pt
 
     # def main_loop(self):
     #     rate = rospy.Rate(15)
