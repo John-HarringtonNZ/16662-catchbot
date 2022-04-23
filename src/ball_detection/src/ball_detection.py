@@ -92,6 +92,11 @@ class BallDetector:
             # compute the minimum enclosing circle and centroid
             ((x, y), radius) = cv2.minEnclosingCircle(c)
 
+            min_radius = 6
+            if radius < min_radius:
+                print(f"Ball too small: min_radius={min_radius}, detected radius={radius}")
+                return
+
             self.marked_image = cv2.circle(blurred, (int(x),int(y)), int(radius), (255, 0, 0), 2)
             print(f"Ball detected at {round(x,2)}. {round(y,2)}, r={round(radius, 2)}")
             cv2.imshow('Track', self.marked_image)
