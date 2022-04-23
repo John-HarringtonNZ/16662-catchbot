@@ -13,6 +13,7 @@ from cv_bridge import CvBridge, CvBridgeError
 import pathlib
 import os
 import matplotlib.pyplot as plt
+import message_filters
 
 class BallDetector:
 
@@ -31,15 +32,17 @@ class BallDetector:
 
         self.bridge = CvBridge()
 
-        self.rgb_sub = rospy.Subscriber(
-        "/rgb/image_raw",
-        Image, 
-        self.rgb_clbk)
+        self.rgb_sub = message_filters.Subscriber(
+            "/rgb/image_raw",
+            Image
+        )
+        self.rgb_sub.registerCallback(self.rgb_clbk)
 
-        self.depth_sub = rospy.Subscriber(
-        "/depth_to_rgb/image_raw",
-        Image, 
-        self.depth_clbk)
+        self.depth_sub = message_filters.Subscriber(
+            "/depth_to_rgb/image_raw",
+            Image
+        ) 
+        self.depth_sub.registerCallback(self.depth_clbk)
 
         self.pub = rospy.Publisher(
         "/ball_detections", 
