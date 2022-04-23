@@ -10,7 +10,7 @@ import imutils
 # from perception import CameraIntrinsics
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
-import pathlib
+# import pathlib
 import os
 import matplotlib.pyplot as plt
 import message_filters
@@ -19,7 +19,7 @@ class BallDetector:
 
     def __init__(self):
         self.ball_pos_msg = PointStamped()
-        filepath = pathlib.Path(__file__).parent.resolve()
+        # filepath = pathlib.Path(__file__).parent.resolve()
         
         self.intrinsics = np.array([909.8428955078125, 0.0, 961.3718872070312, 0.0, 909.5616455078125, 549.1278686523438, 0.0, 0.0, 1.0]).reshape((3,3))
         self.extrinsics = np.zeros((3,4))
@@ -46,7 +46,7 @@ class BallDetector:
             Image
         ) 
 
-        self.ts = message_filters.ApproximateTimeSynchronizer([self.rgb_sub, self.depth_sub],10,0.1)
+        self.ts = message_filters.ApproximateTimeSynchronizer([self.rgb_sub, self.depth_sub],10,0.01)
         self.ts.registerCallback(self.detectBall)
 
         self.pub = rospy.Publisher(
@@ -60,9 +60,6 @@ class BallDetector:
             queue_size=2)
 
     def detectBall(self, rgb_msg, depth_msg):
-
-        print("detecting ball")
-
         # Process RGB msg
         self.rgb_map = np.frombuffer(rgb_msg.data, dtype=np.uint8).reshape(rgb_msg.height, rgb_msg.width, 4)
         self.rgb_map = self.rgb_map[:,:,:3]
@@ -71,7 +68,7 @@ class BallDetector:
         # Process Depth msg
         self.depth_map = np.frombuffer(depth_msg.data, dtype=np.uint16).reshape(depth_msg.height, depth_msg.width, 1)
         self.depth_header = depth_msg.header
-        print("Got data")
+        print(self.depth_map.shape)
         
         if self.rgb_map is None or self.depth_map is None:
             print('No images')
@@ -80,12 +77,12 @@ class BallDetector:
         greenLower = (29, 120, 6)
         greenUpper = (64, 255, 255)
 
-        grey_Upper = (40)
+        # grey_Upper = (40)
 
-        delta_t = self.rgb_header.stamp.to_sec() - self.depth_header.stamp.to_sec()
+        # delta_t = self.rgb_header.stamp.to_sec() - self.depth_header.stamp.to_sec()
 
         # if we want to threshold out smaller contours
-        rad_thresh = 0
+        # rad_thresh = 0
 
         # resize the frame, blur it, and convert it to the HSVcolor space
         blurred = cv2.GaussianBlur(self.rgb_map, (11, 11), 0)
@@ -98,12 +95,9 @@ class BallDetector:
         mask = cv2.erode(mask, kernel, iterations=2)
         mask = cv2.dilate(mask, kernel, iterations=2)
 
-        print("Masking")
-
         # find contours in the mask and initialize the current (x, y) center of the ball
         cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
         cnts = imutils.grab_contours(cnts)
-        print("Found contours")
 
         # only proceed if at least one contour was found
         if len(cnts) > 0:
@@ -111,7 +105,6 @@ class BallDetector:
             c = max(cnts, key=cv2.contourArea)
             # compute the minimum enclosing circle and centroid
             ((x, y), radius) = cv2.minEnclosingCircle(c)
-            print("got circle")
 
             min_radius = 6
             if radius < min_radius:
@@ -119,10 +112,11 @@ class BallDetector:
                 return
 
             self.marked_image = cv2.circle(blurred, (int(x),int(y)), int(radius), (255, 0, 0), 2)
+            self.marked_depth_map = cv2.circle(self.depth_map, (int(x),int(y)), int(radius), (255,), 2)
             # print(f"Ball detected at {round(x,2)}. {round(y,2)}, r={round(radius, 2)}")
 
             try:
-                self.image_pub.publish(self.bridge.cv2_to_imgmsg(self.marked_image, "bgr8"))
+                self.image_pub.publish(self.bridge.cv2_to_imgmsg(self.marked_depth_map, "mono16"))
             except CvBridgeError as e:
                 print(e)
             # cv2.imshow('Track', self.marked_image)
