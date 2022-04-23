@@ -61,7 +61,7 @@ class BallDetector:
             print('No images')
             return
         # define the lower and upper boundaries of the "green" ball in the HSV color space
-        greenLower = (29, 86, 6)
+        greenLower = (29, 120, 6)
         greenUpper = (64, 255, 255)
 
         grey_Upper = (40)
@@ -78,8 +78,9 @@ class BallDetector:
         # construct a mask for the color "green"
         mask = cv2.inRange(hsv, greenLower, greenUpper)
         # perform dilations and erosions to remove any small blobs left in the mask
-        mask = cv2.erode(mask, None, iterations=2)
-        mask = cv2.dilate(mask, None, iterations=2)
+        kernel = np.ones((3, 3), np.uint8)
+        mask = cv2.erode(mask, kernel, iterations=2)
+        mask = cv2.dilate(mask, kernel, iterations=2)
 
         # find contours in the mask and initialize the current (x, y) center of the ball
         cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
@@ -91,7 +92,8 @@ class BallDetector:
             # compute the minimum enclosing circle and centroid
             ((x, y), radius) = cv2.minEnclosingCircle(c)
 
-            self.marked_image = cv2.circle(blurred, (int(x),int(y)), int(radius), (255, 255, 255), 2)
+            self.marked_image = cv2.circle(blurred, (int(x),int(y)), int(radius), (255, 0, 0), 2)
+            print(f"Ball detected at {round(x,2)}. {round(y,2)}, r={round(radius, 2)}")
             cv2.imshow('Track', self.marked_image)
             k = cv2.waitKey(1) & 0xFF
             if k == ord('q'):
@@ -108,6 +110,8 @@ class BallDetector:
             self.pub.publish(self.ball_pos_msg)
 
             return 0
+        else:
+            print("No Ball detected!")
 
     def get_point_in_world(self, center_x, center_y, depth_image, radius): 
         # thresh = max(25, int(2.5 * radius))
@@ -121,7 +125,8 @@ class BallDetector:
         # else:
         #     object_depth2 = depth_image[center_y, center_x, 0] / 1000
         object_depth2 = depth_image[center_y, center_x, 0] / 1000
-        object_center_point_in_world = self.extrinsics * self.intrinsics.deproject_pixel(object_depth2, object_center)    
+        object_center_point_in_world = self.intrinsics.deproject_pixel(object_depth2, object_center)    
+        # self.extrinsics * 
 
         return object_center_point_in_world
 
