@@ -82,7 +82,8 @@ def moveToCatch(fa, goal_pose, velocity=0.25, dt=0.02):
 if __name__ == "__main__":
 
     # initialize arm
-    fa = FrankaArm()
+    fa = FrankaArm(with_gripper=False)
+    print("Comms established")
     # Commands Arm to go to default hardcoded home joint configuration
     # fa.reset_joints()
 
