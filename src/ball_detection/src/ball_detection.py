@@ -20,8 +20,13 @@ class BallDetector:
     def __init__(self):
         self.ball_pos_msg = PointStamped()
         filepath = pathlib.Path(__file__).parent.resolve()
-        # self.intrinsics = CameraIntrinsics.load(os.path.join(filepath, '../config/azure_kinect.intr'))
-        # self.extrinsics = RigidTransform.load(os.path.join(filepath, '../config/extrinsics.tf'))
+        
+        self.intrinsics = np.array([909.8428955078125, 0.0, 961.3718872070312, 0.0, 909.5616455078125, 549.1278686523438, 0.0, 0.0, 1.0]).reshape((3,3))
+        self.extrinsics = np.zeros((3,4))
+        self.extrinsics[0,0] = 1
+        self.extrinsics[1,1] = 1
+        self.extrinsics[2,2] = 1
+
         self.rgb_map = None
         self.depth_map = None
 
@@ -53,15 +58,6 @@ class BallDetector:
             "detections_image", 
             Image,
             queue_size=2)
-
-    # def rgb_clbk(self, msg):
-    #     self.rgb_map = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, 4)
-    #     self.rgb_map = self.rgb_map[:,:,:3]
-    #     self.rgb_header = msg.header
-    
-    # def depth_clbk(self, msg):
-    #     self.depth_map = np.frombuffer(msg.data, dtype=np.uint16).reshape(msg.height, msg.width, 1)
-    #     self.depth_header = msg.header
 
     def detectBall(self, rgb_msg, depth_msg):
 
