@@ -22,10 +22,10 @@ class BallDetector:
         # filepath = pathlib.Path(__file__).parent.resolve()
         
         self.intrinsics = np.array([909.8428955078125, 0.0, 961.3718872070312, 0.0, 909.5616455078125, 549.1278686523438, 0.0, 0.0, 1.0]).reshape((3,3))
-        self.extrinsics = np.zeros((3,4))
-        self.extrinsics[0,0] = 1
-        self.extrinsics[1,1] = 1
-        self.extrinsics[2,2] = 1
+        self.extrinsics = np.array([[-0.425703, 0.050087, 0.903465, -0.064335],
+                                    [-0.904793, -0.035017, -0.424387, 0.394543],
+                                    [0.010381, -0.998131, 0.060225, 0.701992],
+                                    [0, 0, 0, 1]])
 
         self.rgb_map = None
         self.depth_map = None
@@ -172,7 +172,8 @@ class BallDetector:
         # self.extrinsics * 
         # TODO incorporate extrinsics
         # print(object_depth)
-        return camera_frame_pt, (object_depth > 0.5 and object_depth < 3.0)
+        world_frame_pt = np.matmul(self.extrinsics, np.append(camera_frame_pt, 1).reshape(4, 1))
+        return world_frame_pt, (object_depth > 0.5 and object_depth < 3.0)
 
     # def main_loop(self):
     #     rate = rospy.Rate(15)

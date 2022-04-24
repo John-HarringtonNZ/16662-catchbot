@@ -1,4 +1,10 @@
 """
+!!!!!!!! Has to be run from the terminal in the directory. Does not work in VS code.
+"""
+
+
+
+"""
 Adapted from autolab/perception package's register camera script:
 Script to register sensors to a chessboard for the YuMi setup
 Authors: Jeff Mahler and Brenton Chu
