@@ -46,7 +46,7 @@ class BallDetector:
             Image
         ) 
 
-        self.ts = message_filters.ApproximateTimeSynchronizer([self.rgb_sub, self.depth_sub],1,0.01)
+        self.ts = message_filters.ApproximateTimeSynchronizer([self.rgb_sub, self.depth_sub],10,0.001)
         self.ts.registerCallback(self.detectBall)
 
         self.pub = rospy.Publisher(
@@ -81,10 +81,6 @@ class BallDetector:
         greenLower = (29, 120, 6)
         greenUpper = (64, 255, 255)
 
-        # grey_Upper = (40)
-
-        # delta_t = self.rgb_header.stamp.to_sec() - self.depth_header.stamp.to_sec()
-
         # if we want to threshold out smaller contours
         # rad_thresh = 0
 
@@ -96,7 +92,7 @@ class BallDetector:
         mask = cv2.inRange(hsv, greenLower, greenUpper)
         # perform dilations and erosions to remove any small blobs left in the mask
         kernel = np.ones((3, 3), np.uint8)
-        mask = cv2.erode(mask, kernel, iterations=2)
+        #mask = cv2.erode(mask, kernel, iterations=2)
         mask = cv2.dilate(mask, kernel, iterations=2)
 
         # find contours in the mask and initialize the current (x, y) center of the ball
@@ -110,7 +106,7 @@ class BallDetector:
             # compute the minimum enclosing circle and centroid
             ((x, y), radius) = cv2.minEnclosingCircle(c)
 
-            self.marked_image = cv2.circle(blurred, (int(x),int(y)), int(radius), (255, 0, 0), 2)
+            self.marked_image = cv2.circle(mask, (int(x),int(y)), int(radius), (255, 0, 0), 2)
             self.marked_depth_map = cv2.circle(self.depth_map, (int(x),int(y)), int(radius), (255,), 2)
             # print(f"Ball detected at {round(x,2)}. {round(y,2)}, r={round(radius, 2)}")
 
@@ -122,14 +118,14 @@ class BallDetector:
             min_radius = 6
             if radius < min_radius:
                 print("Ball too small: min_radius={}, detected radius={}".format(min_radius, radius))
-                return
-            if self.depth_map[int(y), int(x), 0] < 100:
-                print("Depth too small")
-                return
+                return    
+
             # only proceed if the radius meets a minimum size
             # if radius > rad_thresh: # tuning param
-            ball_center = self.get_point_in_world(x, y, self.depth_map, radius)
-            print(ball_center)
+            ball_center, good_depth = self.get_point_in_world(x, y, self.depth_map, radius)
+            if not good_depth:
+                print("Not good depth")
+                return
             # Set up message
             self.ball_pos_msg.header = self.rgb_header
             # TODO change frame ID to world/base_link frame
@@ -153,7 +149,7 @@ class BallDetector:
         #     print(object_depth2)
         # else:
         #     object_depth2 = depth_image[center_y, center_x, 0] / 1000
-        image_pt = np.array([[center_x, center_y, 1]]).T
+        # image_pt = np.array([[center_x, center_y, 1]]).T
         image_ball_pos_msg = PointStamped()
         image_ball_pos_msg.header = self.rgb_header
         image_ball_pos_msg.point.x = center_x/100
@@ -161,11 +157,13 @@ class BallDetector:
         image_ball_pos_msg.point.z = 0
         # print(self.intrinsics)
         self.image_pt_pub.publish(image_ball_pos_msg)
-        kernel_size = 5
-        object_depth = np.median(depth_image[
-            max(0,int(center_y)-kernel_size//2):(int(center_y)+kernel_size//2),
-            max(0,int(center_x)-kernel_size//2):(int(center_x)+kernel_size//2), 0
-        ]) / 1000
+        kernel_size = int(1.5*radius)
+        depth_kernel = depth_image[
+            max(0,int(center_y)-kernel_size):(int(center_y)+kernel_size),
+            max(0,int(center_x)-kernel_size):(int(center_x)+kernel_size), 0
+        ]
+        object_depth = np.median(depth_kernel[np.logical_and(depth_kernel > 500, depth_kernel < 3000)]) / 1000
+        # print(radius, depth_kernel[depth_kernel > 0])
         # object_depth = 1
         # print(depth_image[int(center_y), int(center_x), 0])
         # print(np.r_[np.array([center_x, center_y]), 1.0])
@@ -173,7 +171,8 @@ class BallDetector:
         # object_center_point_in_world = self.intrinsics.deproject_pixel(object_depth2, object_center)    
         # self.extrinsics * 
         # TODO incorporate extrinsics
-        return camera_frame_pt
+        # print(object_depth)
+        return camera_frame_pt, (object_depth > 0.5 and object_depth < 3.0)
 
     # def main_loop(self):
     #     rate = rospy.Rate(15)

@@ -35,10 +35,10 @@ if __name__ == '__main__':
     config = YamlConfig(config_filename)
 
     robot = FrankaArm()
-    robot.reset_joints()
+    # robot.reset_joints()
 
     # Go to start position
-    robot.goto_pose(CALIBRATE_POSE, duration=5)
+    # robot.goto_pose(CALIBRATE_POSE, duration=5)
     
     # print('Applying 0 force torque control for {}s'.format(20))
     # robot.run_guide_mode(20)
