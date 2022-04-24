@@ -171,7 +171,7 @@ class BallDetector:
         # object_center_point_in_world = self.intrinsics.deproject_pixel(object_depth2, object_center)    
         # self.extrinsics * 
         # TODO incorporate extrinsics
-        # print(object_depth)
+        print(object_depth)
         world_frame_pt = np.matmul(self.extrinsics, np.append(camera_frame_pt, 1).reshape(4, 1))
         return world_frame_pt, (object_depth > 0.5 and object_depth < 3.0)
 

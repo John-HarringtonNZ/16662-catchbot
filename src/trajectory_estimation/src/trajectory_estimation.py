@@ -22,7 +22,10 @@ class TrajectoryEstimator:
       self.detections = np.array([])
       self.times = np.array([])
       self.reference_time = 0
-      self.reference_z = 0.1 # meters off base link plane
+      self.reference_z = 0.0 # meters off base link plane
+
+      self.max_x = 2.0
+      self.min_x = 0.6
 
       self.last_xy = None
       self.pub_threshold = 0.02 # Only update publisher if new intersect is different enough
@@ -38,7 +41,24 @@ class TrajectoryEstimator:
         PointStamped,
         queue_size=2)
 
+  def reset(self, header):
+    print('Resetting')
+    self.detections = np.array([])
+    self.times = np.array([])
+    self.last_xy = None
+    self.reference_time = 0
+    # home_pos_msg = PointStamped()
+    # home_pos_msg.header = header
+    # home_pos_msg.point.x = 0
+    # home_pos_msg.point.y = 0
+    # home_pos_msg.point.z = 0
+    # self.pub.publish(home_pos_msg)
+
   def update_traj_estimate(self, msg):
+    print(msg.point.x)
+    if msg.point.x > self.max_x or msg.point.x < self.min_x:
+      self.reset(msg.header)
+      return
 
     # If not initialized, start
     if self.detections.size == 0:

@@ -17,11 +17,27 @@ from frankapy.utils import min_jerk_weight
 START_POSE = RigidTransform(
         translation=np.array([0.45, 0, 0.4]),
         # rotation=np.array([[0.70710678, -0.70710678, 0], [-0.70710678, -0.70710678, 0], [0, 0, 1.0]]),
+        # rotation=np.array([[7.07185286e-01, -7.07028188e-01, -3.36139057e-04],
+        #                     [-7.07028245e-01, -7.07185062e-01, -5.90835436e-04],
+        #                     [1.80024788e-04,  6.55489934e-04, -9.99999769e-01]]),
         rotation=np.array([[7.07185286e-01, -7.07028188e-01, -3.36139057e-04],
-                            [-7.07028245e-01, -7.07185062e-01, -5.90835436e-04],
-                            [1.80024788e-04,  6.55489934e-04, -9.99999769e-01]]),
+                             [-7.07028245e-01, -7.07185062e-01, -5.90835436e-04],
+                             [1.80024788e-04,  6.55489934e-04, -9.99999769e-01]]),
         from_frame="franka_tool",
         to_frame="world"
+    )
+
+TOOL_DELTA_POSE = RigidTransform(
+        translation=np.array([0.106, -0.106, -0.01]),
+        # rotation=np.array([[0.70710678, -0.70710678, 0], [-0.70710678, -0.70710678, 0], [0, 0, 1.0]]),
+        # rotation=np.array([[7.07185286e-01, -7.07028188e-01, -3.36139057e-04],
+        #                     [-7.07028245e-01, -7.07185062e-01, -5.90835436e-04],
+        #                     [1.80024788e-04,  6.55489934e-04, -9.99999769e-01]]),
+        rotation=np.array([[1, 0, 0],
+                            [0, 1, 0],
+                            [0,  0, 1]]),
+        from_frame="franka_tool",
+        to_frame="franka_tool_base"
     )
 
 BOX_CORNER_MIN = np.array([0.4, -0.3, 0.2])
@@ -107,22 +123,23 @@ def moveToCatch(fa, goal_pose, disp=0.15, dt=0.02):
 if __name__ == "__main__":
 
     # initialize arm
-    fa = FrankaArm()
+    fa = FrankaArm(with_gripper=False)
     # Commands Arm to go to default hardcoded home joint configuration
     # fa.reset_joints()
 
 
     # print(fa.get_tool_base_pose())
     # Go to start position
+    fa.set_tool_delta_pose(TOOL_DELTA_POSE)
     fa.goto_pose(START_POSE, duration=5)
 
-    # Create a displacement w.r.to the tool and create a goal pose
-    curr_pose = fa.get_pose()
-    T_delta = RigidTransform(
-        translation=np.array([0.0, -0.275, 0]),
-        from_frame=curr_pose.to_frame,
-        to_frame=curr_pose.to_frame,
-    )
-    goal_pose = T_delta * curr_pose
+    # # Create a displacement w.r.to the tool and create a goal pose
+    # curr_pose = fa.get_pose()
+    # T_delta = RigidTransform(
+    #     translation=np.array([0.0, -0.275, 0]),
+    #     from_frame=curr_pose.to_frame,
+    #     to_frame=curr_pose.to_frame,
+    # )
+    # goal_pose = T_delta * curr_pose
 
-    moveToCatch(fa, goal_pose, disp=0.15, dt=0.01)
+    # moveToCatch(fa, goal_pose, disp=0.15, dt=0.01)
