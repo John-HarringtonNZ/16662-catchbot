@@ -118,7 +118,7 @@ class PlanningNode:
         else:
             goal_pose = RigidTransform(
             translation=np.array([
-                self.START_POSE.translation[0],
+                self.goal_pose_msg.point.x,
                 self.goal_pose_msg.point.y,
                 self.goal_pose_msg.point.z
             ]),
@@ -127,8 +127,8 @@ class PlanningNode:
         )
 
         interpol_pose = curr_pose
-        print(goal_pose.translation)
-        print(curr_pose.translation)
+        # print(goal_pose.translation)
+        # print(curr_pose.translation)
         delta = goal_pose.translation - curr_pose.translation
         delta_norm = np.linalg.norm(delta)
         if np.abs(delta_norm) > 1e-3:
@@ -146,6 +146,7 @@ class PlanningNode:
         # account for tool offset
         if np.any(np.isnan(interpol_pose.translation)):
             interpol_pose = curr_pose
+        interpol_pose.translation[0] = self.START_POSE.translation[0]           # servoing
         interpol_pose = interpol_pose * self.TOOL_DELTA_POSE.inverse()
 
         traj_gen_proto_msg = PosePositionSensorMessage(
@@ -170,10 +171,9 @@ class PlanningNode:
         if (time.time() - self.last_valid_pose_time > self.timeout):
             self.is_resetting = True
             print('Terminating...')
-            # self.terminate_dynamic()
-            # print("Terminated")
+            self.terminate_dynamic()
+            print("Terminated")
             self.reset()
-            self.is_resetting = False
 
 if __name__ == "__main__":
 
