@@ -70,6 +70,7 @@ def moveToCatch(fa, goal_pose, disp=0.15, dt=0.02):
     i = 0
     init_time = rospy.Time.now().to_time()
     while(np.linalg.norm(curr_pose.translation - goal_pose.translation) > 1e-2):
+        loop_start_time = time.time()
         curr_pose = fa.get_pose()
         delta = goal_pose.translation - curr_pose.translation
         delta_norm = np.linalg.norm(delta)
@@ -100,9 +101,11 @@ def moveToCatch(fa, goal_pose, disp=0.15, dt=0.02):
 
         # rospy.loginfo("Publishing: ID {}".format(traj_gen_proto_msg.id))
         pub.publish(ros_msg)
+        print(len(ros_msg.trajectoryGeneratorSensorData.sensorData))
+        # print(time.time() - loop_start_time)
         rate.sleep()
         i = i + 1
-
+    print("Loop ended: ", time.time() - start)
     # Stop the skill
     # Alternatively can call fa.stop_skill()
     term_proto_msg = ShouldTerminateSensorMessage(
@@ -115,6 +118,7 @@ def moveToCatch(fa, goal_pose, disp=0.15, dt=0.02):
     )
     pub.publish(ros_msg)
     fa.wait_for_skill()
+    print("Skill Done: ", time.time() - start)
     # while(np.linalg.norm(fa.get_joint_velocities()) > 1e-2):
     #     pass
     rospy.loginfo(f"Movement Done. Runtime: {time.time() - start:0.4f}s")
@@ -124,6 +128,7 @@ if __name__ == "__main__":
 
     # initialize arm
     fa = FrankaArm(with_gripper=False)
+    print('Initialized Arm')
     # Commands Arm to go to default hardcoded home joint configuration
     # fa.reset_joints()
 
@@ -132,14 +137,15 @@ if __name__ == "__main__":
     # Go to start position
     fa.set_tool_delta_pose(TOOL_DELTA_POSE)
     fa.goto_pose(START_POSE, duration=5)
+    print('Got to START_POSE')
 
-    # # Create a displacement w.r.to the tool and create a goal pose
-    # curr_pose = fa.get_pose()
-    # T_delta = RigidTransform(
-    #     translation=np.array([0.0, -0.275, 0]),
-    #     from_frame=curr_pose.to_frame,
-    #     to_frame=curr_pose.to_frame,
-    # )
-    # goal_pose = T_delta * curr_pose
+    # Create a displacement w.r.to the tool and create a goal pose
+    curr_pose = fa.get_pose()
+    T_delta = RigidTransform(
+        translation=np.array([0.0, -0.25, 0]),
+        from_frame=curr_pose.to_frame,
+        to_frame=curr_pose.to_frame,
+    )
+    goal_pose = T_delta * curr_pose
 
     # moveToCatch(fa, goal_pose, disp=0.15, dt=0.01)

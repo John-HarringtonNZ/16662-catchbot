@@ -19,13 +19,14 @@ Publish x,y,z location as a geometry_msgs/Point
 class TrajectoryEstimator:
 
   def __init__(self) -> None:
+      print('Initializing trajectory estimation')
       self.detections = np.array([])
       self.times = np.array([])
       self.reference_time = 0
-      self.reference_z = 0.0 # meters off base link plane
+      self.reference_z = 0.25 # meters off base link plane
 
-      self.max_x = 2.0
-      self.min_x = 0.6
+      self.max_x = 2.5
+      self.min_x = 1.0
 
       self.last_xy = None
       self.pub_threshold = 0.02 # Only update publisher if new intersect is different enough
@@ -55,6 +56,13 @@ class TrajectoryEstimator:
     # self.pub.publish(home_pos_msg)
 
   def update_traj_estimate(self, msg):
+    # self.intersect_pos_msg.header.stamp = rospy.Time.now()
+    # self.intersect_pos_msg.point.x = 0.45
+    # self.intersect_pos_msg.point.y = -0.25
+    # self.intersect_pos_msg.point.z = 0.4
+    # self.pub.publish(self.intersect_pos_msg)
+    # return
+
     print(msg.point.x)
     if msg.point.x > self.max_x or msg.point.x < self.min_x:
       self.reset(msg.header)
