@@ -35,8 +35,8 @@ class PlanningNode:
             to_frame="world"
         )
 
-    BOX_CORNER_MIN = np.array([0.46, -0.2, 0.2])
-    BOX_CORNER_MAX = np.array([0.66, 0.2, 0.7])
+    BOX_CORNER_MIN = np.array([0.46, -0.3, 0.2])
+    BOX_CORNER_MAX = np.array([0.66, 0.3, 0.7])
 
     def __init__(self) -> None:
         # initialize arm
@@ -63,7 +63,7 @@ class PlanningNode:
 
         self.goal_pose_msg = None
         self.sub = rospy.Subscriber(
-            "/ball_detections", 
+            "/intersect_position", 
             PointStamped,
             self.get_goal_position)
         self.pub = rospy.Publisher(
@@ -73,7 +73,7 @@ class PlanningNode:
 
         self.dt = 0.01
         self.rate = rospy.Rate(1 / self.dt)
-        self.disp = 0.1
+        self.disp = 0.2
         self.init_time = rospy.Time.now().to_time()
         self.id = 0
         self.last_valid_pose_time = time.time()
@@ -118,6 +118,7 @@ class PlanningNode:
         else:
             goal_pose = RigidTransform(
             translation=np.array([
+                # self.START_POSE.translation[0],     # servoing
                 self.goal_pose_msg.point.x,
                 self.goal_pose_msg.point.y,
                 self.goal_pose_msg.point.z
@@ -146,14 +147,14 @@ class PlanningNode:
         # account for tool offset
         if np.any(np.isnan(interpol_pose.translation)):
             interpol_pose = curr_pose
-        interpol_pose.translation[0] = self.START_POSE.translation[0]           # servoing
+        # interpol_pose.translation[0] = self.START_POSE.translation[0]           # servoing
         interpol_pose = interpol_pose * self.TOOL_DELTA_POSE.inverse()
 
         traj_gen_proto_msg = PosePositionSensorMessage(
             id=self.id,
             timestamp=timestamp,
             position=interpol_pose.translation,
-            quaternion=interpol_pose.quaternion,
+            quaternion=self.START_POSE.quaternion,
         )
         ros_msg = make_sensor_group_msg(
             trajectory_generator_sensor_msg=sensor_proto2ros_msg(

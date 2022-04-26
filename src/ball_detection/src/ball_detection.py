@@ -162,7 +162,7 @@ class BallDetector:
             max(0,int(center_y)-kernel_size):(int(center_y)+kernel_size),
             max(0,int(center_x)-kernel_size):(int(center_x)+kernel_size), 0
         ]
-        object_depth = np.median(depth_kernel[np.logical_and(depth_kernel > 1000, depth_kernel < 3000)]) / 1000
+        object_depth = np.median(depth_kernel[np.logical_and(depth_kernel > 500, depth_kernel < 3000)]) / 1000
         # print(radius, depth_kernel[depth_kernel > 0])
         # object_depth = 1
         # print(depth_image[int(center_y), int(center_x), 0])
@@ -172,8 +172,8 @@ class BallDetector:
         # self.extrinsics * 
         # TODO incorporate extrinsics
         world_frame_pt = np.matmul(self.extrinsics, np.append(camera_frame_pt, 1).reshape(4, 1))
-        print(np.round(world_frame_pt, 2))
-        return world_frame_pt, (object_depth > 1.0 and object_depth < 3.0)
+        print(object_depth)
+        return world_frame_pt, (object_depth > 0.5 and object_depth < 3.0)
 
     # def main_loop(self):
     #     rate = rospy.Rate(15)

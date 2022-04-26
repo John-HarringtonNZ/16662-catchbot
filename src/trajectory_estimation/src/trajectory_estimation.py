@@ -25,8 +25,8 @@ class TrajectoryEstimator:
       self.reference_time = 0
       self.reference_z = 0.25 # meters off base link plane
 
-      self.max_x = 2.5
-      self.min_x = 1.0
+      self.max_x = 2.0
+      self.min_x = 0.7
 
       self.last_xy = None
       self.pub_threshold = 0.02 # Only update publisher if new intersect is different enough
