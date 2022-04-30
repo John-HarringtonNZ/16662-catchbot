@@ -64,6 +64,12 @@ class BallDetector:
             Image,
             queue_size=2)
 
+        self.rgb_pub = rospy.Publisher(
+            "rgb_detection",
+            Image,
+            queue_size=2
+        )
+
     def detectBall(self, rgb_msg, depth_msg):
         # Process RGB msg
         self.rgb_map = np.frombuffer(rgb_msg.data, dtype=np.uint8).reshape(rgb_msg.height, rgb_msg.width, 4)
@@ -112,6 +118,7 @@ class BallDetector:
 
             #Add circle over detected ball
             self.marked_depth_map = cv2.circle(backtorgb, (int(x),int(y)), int(radius), (255,0,0), 2)
+            rgb_marked = cv2.circle(blurred, (int(x),int(y)), int(radius), (255,0,0), 2)
             # print(f"Ball detected at {round(x,2)}. {round(y,2)}, r={round(radius, 2)}")
 
             
@@ -133,6 +140,7 @@ class BallDetector:
 
             try:
                 self.image_pub.publish(self.bridge.cv2_to_imgmsg(self.marked_depth_map, "mono16"))
+                self.rgb_pub.publish(self.bridge.cv2_to_imgmsg(rgb_marked, "bgr8"))
             except CvBridgeError as e:
                 print(e)
 
