@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import rospy
-from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import PointStamped, Point
+from visualization_msgs.msg import Marker
 import numpy as np
 
 '''
@@ -41,6 +42,11 @@ class TrajectoryEstimator:
         "/intersect_position", 
         PointStamped,
         queue_size=2)
+      self.traj_pub  = rospy.Publisher(
+        "/trajectory_marker",
+        Marker,
+        queue_size=1
+      )
 
   def reset(self, header):
     print('Resetting')
@@ -106,6 +112,29 @@ class TrajectoryEstimator:
     # Use roots to get estimated x and y location
     x_poly = np.polynomial.polynomial.Polynomial(x_fit)
     y_poly = np.polynomial.polynomial.Polynomial(y_fit)
+    z_poly = np.polynomial.polynomial.Polynomial(z_fit)
+
+    # Publish trajectory points for visualization
+    traj_points = []
+    for t in np.linspace(self.times[0], intersection_time, 15):
+      traj_points.append(Point())
+      traj_points[-1].x = x_poly(t)
+      traj_points[-1].y = y_poly(t)
+      traj_points[-1].z = z_poly(t)
+
+    traj_marker = Marker()
+    traj_marker.type = traj_marker.POINTS
+    traj_marker.header = msg.header
+    traj_marker.points = traj_points
+    traj_marker.action = traj_marker.ADD
+    traj_marker.scale.x = 0.05
+    traj_marker.scale.y = 0.05
+    traj_marker.scale.z = 0.05
+    traj_marker.color.r = 1.0
+    traj_marker.color.a = 1.0
+    traj_marker.pose.orientation.w = 1.0
+    self.traj_pub.publish(traj_marker)
+
     x_intersect = x_poly(intersection_time)
     y_intersect = y_poly(intersection_time)
 
