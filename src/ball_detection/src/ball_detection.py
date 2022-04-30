@@ -106,14 +106,14 @@ class BallDetector:
             # compute the minimum enclosing circle and centroid
             ((x, y), radius) = cv2.minEnclosingCircle(c)
 
+            backtorgb = cv2.cvtColor(self.depth_map,cv2.COLOR_GRAY2RGB)
+            
             self.marked_image = cv2.circle(mask, (int(x),int(y)), int(radius), (255, 0, 0), 2)
-            self.marked_depth_map = cv2.circle(self.depth_map, (int(x),int(y)), int(radius), (255,), 2)
+
+            #Add circle over detected ball
+            self.marked_depth_map = cv2.circle(backtorgb, (int(x),int(y)), int(radius), (255,0,0), 2)
             # print(f"Ball detected at {round(x,2)}. {round(y,2)}, r={round(radius, 2)}")
 
-            try:
-                self.image_pub.publish(self.bridge.cv2_to_imgmsg(self.marked_depth_map, "mono16"))
-            except CvBridgeError as e:
-                print(e)
             
             min_radius = 6
             if radius < min_radius:
@@ -122,17 +122,28 @@ class BallDetector:
 
             # only proceed if the radius meets a minimum size
             # if radius > rad_thresh: # tuning param
-            ball_center, good_depth = self.get_point_in_world(x, y, self.depth_map, radius)
+            ball_center, good_depth, kernel_size = self.get_point_in_world(x, y, self.depth_map, radius)
             if not good_depth:
                 print("Not good depth")
                 return
-            # Set up message
-            self.ball_pos_msg.header = self.rgb_header
-            # TODO change frame ID to world/base_link frame
-            self.ball_pos_msg.point.x = ball_center[0]
-            self.ball_pos_msg.point.y = ball_center[1]
-            self.ball_pos_msg.point.z = ball_center[2]
-            self.pub.publish(self.ball_pos_msg)
+
+            bottom_corner = (x,y) - (kernel_size, kernel_size)
+            top_corner = (x,y) + (kernel_size, kernel_size)
+            self.marked_depth_map = cv2.rectangle(self.marked_depth_map, bottom_corner, top_corner, (0,255,0), 3)
+
+            try:
+                self.image_pub.publish(self.bridge.cv2_to_imgmsg(self.marked_depth_map, "mono16"))
+            except CvBridgeError as e:
+                print(e)
+
+            if good_depth:
+                # Set up message
+                self.ball_pos_msg.header = self.rgb_header
+                # TODO change frame ID to world/base_link frame
+                self.ball_pos_msg.point.x = ball_center[0]
+                self.ball_pos_msg.point.y = ball_center[1]
+                self.ball_pos_msg.point.z = ball_center[2]
+                self.pub.publish(self.ball_pos_msg)
 
             return 0
         else:
@@ -173,7 +184,7 @@ class BallDetector:
         # TODO incorporate extrinsics
         world_frame_pt = np.matmul(self.extrinsics, np.append(camera_frame_pt, 1).reshape(4, 1))
         print(object_depth)
-        return world_frame_pt, (object_depth > 0.5 and object_depth < 3.0)
+        return world_frame_pt, (object_depth > 0.5 and object_depth < 3.0), kernel_size
 
     # def main_loop(self):
     #     rate = rospy.Rate(15)
