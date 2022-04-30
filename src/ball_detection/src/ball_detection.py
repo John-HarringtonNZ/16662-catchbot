@@ -111,8 +111,14 @@ class BallDetector:
             c = max(cnts, key=cv2.contourArea)
             # compute the minimum enclosing circle and centroid
             ((x, y), radius) = cv2.minEnclosingCircle(c)
+            
+            img2 = np.int16(self.depth_map)     # convert to signed 16 bit integer to allow overflow
+            img2 = (1.0/32)*img2  # apply scale factor
+            img2 = np.clip(img2, 0, 255).astype(int) # force all values to be between 0 and 255
+            # after clip img2 is effectively unsigned 8 bit, but make it explicit:
+            img2 = np.uint8(img2)
 
-            backtorgb = cv2.cvtColor(self.depth_map,cv2.COLOR_GRAY2RGB)
+            backtorgb = cv2.cvtColor(img2, cv2.COLOR_GRAY2BGR)
             
             self.marked_image = cv2.circle(mask, (int(x),int(y)), int(radius), (255, 0, 0), 2)
 
@@ -133,13 +139,15 @@ class BallDetector:
             if not good_depth:
                 print("Not good depth")
                 return
-
-            bottom_corner = (x,y) - (kernel_size, kernel_size)
-            top_corner = (x,y) + (kernel_size, kernel_size)
-            self.marked_depth_map = cv2.rectangle(self.marked_depth_map, bottom_corner, top_corner, (0,255,0), 3)
+            self.marked_depth_map = cv2.rectangle(
+                self.marked_depth_map, 
+                (int(x) - kernel_size, int(y) - kernel_size), 
+                (int(x) + kernel_size, int(y) + kernel_size), 
+                (255,0,0), 
+                3)
 
             try:
-                self.image_pub.publish(self.bridge.cv2_to_imgmsg(self.marked_depth_map, "mono16"))
+                self.image_pub.publish(self.bridge.cv2_to_imgmsg(backtorgb, "bgr8"))
                 self.rgb_pub.publish(self.bridge.cv2_to_imgmsg(rgb_marked, "bgr8"))
             except CvBridgeError as e:
                 print(e)
